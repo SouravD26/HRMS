@@ -221,6 +221,51 @@ $dm_greeting = $dm_hour < 12 ? 'Good morning' : ($dm_hour < 17 ? 'Good afternoon
         </div>
         <?php endif; ?>
 
+        <?php if (adminCan('manage_supervisors', $admin_rights)): ?>
+        <!-- Create Supervisor Card -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card dashboard-card shadow" style="border-left-color: #6f42c1;">
+                <div class="card-body">
+                    <h5 class="card-title">🧑‍✈️ Create Supervisor</h5>
+                    <p class="card-text text-muted">Create supervisors who punch attendance for employees at a location.</p>
+                    <div class="card-links">
+                        <a href="supervisors.php" class="btn btn-sm text-white" style="background:#6f42c1;">Manage Supervisors</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (adminCan('attendance_policy', $admin_rights)): ?>
+        <!-- Attendance Policy Card -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card dashboard-card shadow" style="border-left-color: #0d6efd;">
+                <div class="card-body">
+                    <h5 class="card-title">⚖️ Set Attendance Policy</h5>
+                    <p class="card-text text-muted">Single punch, half day hours, and what counts as a full day.</p>
+                    <div class="card-links">
+                        <a href="attendance_policy.php" class="btn btn-primary btn-sm">Set Policy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (adminCan('project_holidays', $admin_rights)): ?>
+        <!-- Project Holidays Card -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card dashboard-card shadow" style="border-left-color: #0dcaf0;">
+                <div class="card-body">
+                    <h5 class="card-title">🎌 Project Holidays</h5>
+                    <p class="card-text text-muted">Mark a day off for a whole project. Everyone on it is paid without punching.</p>
+                    <div class="card-links">
+                        <a href="project_holidays.php" class="btn btn-info btn-sm">Manage Holidays</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if (adminCan('manage_departments', $admin_rights)): ?>
         <!-- Departments Card -->
         <div class="col-md-6 col-lg-4">

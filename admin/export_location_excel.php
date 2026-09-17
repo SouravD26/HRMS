@@ -11,6 +11,15 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
+// Bank + salary columns shared by every attendance export
+// Report a crash as a readable message rather than a blank 500
+require_once __DIR__ . '/../config/export_errors.php';
+export_report_errors('export_location_excel.php');
+
+require_once __DIR__ . '/../config/export_salary_columns.php';
+// Create them if this export is the first page opened after a deploy
+export_salary_ensure_columns($conn);
+
 // Authentication check
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'suparadmin')) {
     header("Location: ../auth/login.php");
@@ -48,7 +57,7 @@ if (!empty($from_date) && !empty($to_date)) {
 $days_in_month = cal_days_in_month(CAL_GREGORIAN, $month ?? date('m'), $year ?? date('Y'));
 
 // Build query to fetch employees including resigned ones
-$query = "SELECT id, employee_id, name, department, week_off, status, date_of_exit FROM users WHERE role = 'employee' AND (status = 'Working' OR status = 'Resign') AND location = ?";
+$query = "SELECT id, employee_id, name, department, week_off, status, date_of_exit, bank_name, bank_ifsc_code, bank_account_number FROM users WHERE role = 'employee' AND (status = 'Working' OR status = 'Resign') AND location = ?";
 $params = [$location];
 $types = "s";
 
@@ -81,37 +90,24 @@ $from_date_obj = new DateTime($from_date);
 $to_date_obj = new DateTime($to_date);
 
 // Helper function to check status for a date (date string version)
+// Status codes follow the company attendance policy (config/attendance_policy.php):
+//   P = full day, HD = half day, A = absent, WO = week off, H = project holiday, OD = on duty, ADJ = comp off adjusted
 function getStatusForDateByString($conn, $user_id, $date_str, $week_off) {
-    $date_obj = new DateTime($date_str);
-    $day_name = $date_obj->format('l');
-    
-    if ($week_off === $day_name) {
-        return 'WO';
+    require_once __DIR__ . '/../config/attendance_policy.php';
+
+    $result = attendance_day_result($conn, (int)$user_id, $date_str);
+
+    switch ($result['status']) {
+        case 'Week Off': return 'WO';
+
+        case 'Holiday':  return 'H';
+        case 'OD':       return 'OD';
+        case 'Comp Off': return 'ADJ';
+        case 'Leave':    return 'L';
+        case 'Present':  return 'P';
+        case 'Half Day': return 'HD';
+        default:         return 'A';
     }
-    
-    $stmt_od = $conn->prepare("SELECT id FROM od_records WHERE user_id = ? AND od_date = ?");
-    $stmt_od->bind_param("is", $user_id, $date_str);
-    $stmt_od->execute();
-    $result_od = $stmt_od->get_result();
-    if ($result_od->num_rows > 0) {
-        $stmt_od->close();
-        return 'OD';
-    }
-    $stmt_od->close();
-    
-    $stmt_att = $conn->prepare("SELECT status FROM attendance WHERE user_id = ? AND DATE(date) = ?");
-    $stmt_att->bind_param("is", $user_id, $date_str);
-    $stmt_att->execute();
-    $result_att = $stmt_att->get_result();
-    
-    if ($result_att->num_rows > 0) {
-        $att_row = $result_att->fetch_assoc();
-        $stmt_att->close();
-        return ($att_row['status'] === 'Present' || $att_row['status'] === 'Late') ? 'P' : 'A';
-    }
-    
-    $stmt_att->close();
-    return 'A';
 }
 
 // Helper function to check status for a date (backward compatible version)
@@ -269,7 +265,9 @@ for ($day_idx = 0; $day_idx < $num_dates; $day_idx++) {
     $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     $sheet->getStyle($col . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 }
+export_salary_write_headers($sheet, $row, $num_dates);
 $sheet->getRowDimension($row)->setRowHeight(20);
+$salary_month = export_salary_month($date_range);
 $row++;
 
 // Process each department
@@ -301,11 +299,12 @@ foreach ($employees_by_dept as $dept => $employees) {
             }
         }
         
-        // Employee name row
+        // Employee name row, with their bank details and salary on the right
         $sheet->setCellValue('A' . $row, $emp['employee_id'] . " - " . $emp['name']);
         $sheet->getStyle('A' . $row)->applyFromArray([
             'font' => ['bold' => true, 'size' => 11]
         ]);
+        export_salary_write_row($sheet, $row, $num_dates, $conn, $emp, $salary_month);
         $row++;
 
         // Status row
