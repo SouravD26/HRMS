@@ -2647,6 +2647,11 @@ $employee_limit_reached = $current_employee_count >= MAX_EMPLOYEES_LIMIT;
                                 <div class="card-body">
                                     <div class="row g-3">
                                         <div class="col-md-4">
+                                            <label class="form-label">Bank Name <span class="text-muted small">(optional)</span></label>
+                                            <input type="text" name="bank_name" id="modalBankName" class="form-control" placeholder="e.g., State Bank of India"
+                                                maxlength="100">
+                                        </div>
+                                        <div class="col-md-4">
                                             <label class="form-label">Bank Account Number <span class="text-muted small">(optional)</span></label>
                                             <input type="text" name="bank_account_number" id="modalBankAccount" class="form-control" placeholder="Enter bank account number"
                                                 maxlength="30" pattern="[0-9]{6,30}"
