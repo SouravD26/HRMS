@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'admin' && $_SESSION[
 }
 
 // Maximum number of employees admin/suparadmin are allowed to add. Raise this value if a higher limit is ever needed.
-define('MAX_EMPLOYEES_LIMIT', 10);
+define('MAX_EMPLOYEES_LIMIT', 60);
 
 // Ensure designation column exists
 $conn->query("ALTER TABLE users ADD COLUMN IF NOT EXISTS designation VARCHAR(100) DEFAULT NULL");

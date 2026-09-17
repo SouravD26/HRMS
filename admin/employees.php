@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'admin' && $_SESSION[
 }
 
 // Maximum number of employees admin/suparadmin are allowed to add. Raise this value if a higher limit is ever needed.
-define('MAX_EMPLOYEES_LIMIT', 10);
+define('MAX_EMPLOYEES_LIMIT', 60);
 
 // Determine dashboard to return to based on 'from' parameter or user role
 $from = isset($_GET['from']) ? htmlspecialchars($_GET['from']) : '';
@@ -994,7 +994,7 @@ $employee_limit_reached = $current_employee_count >= MAX_EMPLOYEES_LIMIT;
                     <table class="table table-striped table-hover" id="employeesTable">
                         <thead class="table-dark">
                             <tr>
-                                <th>ID</th>
+                                <th>SL.NO</th>
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Employee ID</th>
@@ -1008,6 +1008,7 @@ $employee_limit_reached = $current_employee_count >= MAX_EMPLOYEES_LIMIT;
                         </thead>
                         <tbody>
                             <?php
+                            $sl_no = 0;
                             while ($row = $result->fetch_assoc()) {
                                 $pass_status = $row['password_set'] ? '<span class="badge bg-success">✓ Set</span>' : '<span class="badge bg-warning">✗ Not Set</span>';
                                 
@@ -1017,7 +1018,7 @@ $employee_limit_reached = $current_employee_count >= MAX_EMPLOYEES_LIMIT;
                                 $hasPhoto = !empty($photos);
                                 
                                 echo "<tr data-location=\"" . htmlspecialchars($row['location'] ?? '') . "\">";
-                                echo "<td>" . $row['id'] . "</td>";
+                                echo "<td>" . (++$sl_no) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['name']) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['email']) . "</td>";
                                 echo "<td>" . ($row['employee_id'] ?? 'N/A') . "</td>";

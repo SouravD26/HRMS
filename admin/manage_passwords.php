@@ -214,7 +214,7 @@ $result = $stmt->get_result();
                 <table class="table table-striped table-hover" id="employeesTable">
                     <thead class="table-dark">
                         <tr>
-                            <th>ID</th>
+                            <th>SL.NO</th>
                             <th>Employee Name</th>
                             <th>Email</th>
                             <th>Employee ID</th>
@@ -227,6 +227,7 @@ $result = $stmt->get_result();
                     </thead>
                     <tbody>
                         <?php
+                        $sl_no = 0;
                         while ($row = $result->fetch_assoc()) {
                             $pass_status = $row['password_set'] ? '<span class="badge bg-success">✓ Set</span>' : '<span class="badge bg-warning">✗ Not Set</span>';
                             $action_text = $row['password_set'] ? 'Change Password' : 'Set Password';
@@ -234,7 +235,7 @@ $result = $stmt->get_result();
                             $location = htmlspecialchars($row['location'] ?? 'N/A');
                             $emp_name = htmlspecialchars($row['name']);
                             echo "<tr data-name='" . $emp_name . "' data-empid='" . htmlspecialchars($row['employee_id']) . "' data-dept='" . $dept . "' data-location='" . $location . "'>";
-                            echo "<td>" . $row['id'] . "</td>";
+                            echo "<td>" . (++$sl_no) . "</td>";
                             echo "<td>" . $emp_name . "</td>";
                             echo "<td>" . htmlspecialchars($row['email']) . "</td>";
                             echo "<td>" . htmlspecialchars($row['employee_id']) . "</td>";

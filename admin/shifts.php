@@ -161,7 +161,7 @@ if ($stmt) {
                     <table class="table table-striped table-hover">
                         <thead class="table-dark">
                             <tr>
-                                <th>ID</th>
+                                <th>SL.NO</th>
                                 <th>Start Time</th>
                                 <th>End Time</th>
                                 <th>Created At</th>
@@ -171,12 +171,13 @@ if ($stmt) {
                         <tbody>
                             <?php
                             if ($result && $result->num_rows > 0) {
+                                $sl_no = 0;
                                 while ($row = $result->fetch_assoc()) {
                                     $start_time = date('h:i A', strtotime($row['start_time']));
                                     $end_time = date('h:i A', strtotime($row['end_time']));
                                     $shift_display = $start_time . ' - ' . $end_time;
                                     echo "<tr>";
-                                    echo "<td>" . $row['id'] . "</td>";
+                                    echo "<td>" . (++$sl_no) . "</td>";
                                     echo "<td>" . $start_time . "</td>";
                                     echo "<td>" . $end_time . "</td>";
                                     echo "<td>" . date('d-m-Y H:i', strtotime($row['created_at'])) . "</td>";

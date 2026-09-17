@@ -110,16 +110,16 @@ $debug_info['source_column'] = in_array('source', $attendance_columns) ? '✓ Ex
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>SL.NO</th>
                                 <th>Name</th>
                                 <th>Employee ID</th>
                                 <th>Role</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($employees_list as $emp): ?>
+                            <?php $sl_no = 0; foreach ($employees_list as $emp): ?>
                             <tr>
-                                <td><?php echo $emp['id']; ?></td>
+                                <td><?php echo ++$sl_no; ?></td>
                                 <td><?php echo htmlspecialchars($emp['name']); ?></td>
                                 <td><?php echo htmlspecialchars($emp['employee_id']); ?></td>
                                 <td><?php echo htmlspecialchars($emp['role']); ?></td>

@@ -353,7 +353,7 @@ $result = $stmt->get_result();
                     <table class="table table-striped table-hover">
                         <thead class="table-dark">
                             <tr>
-                                <th>ID</th>
+                                <th>SL.NO</th>
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Employee ID</th>
@@ -365,9 +365,10 @@ $result = $stmt->get_result();
                         </thead>
                         <tbody>
                             <?php
+                            $sl_no = 0;
                             while ($row = $result->fetch_assoc()) {
                                 echo "<tr>";
-                                echo "<td>" . $row['id'] . "</td>";
+                                echo "<td>" . (++$sl_no) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['name']) . "</td>";
                                 echo "<td>" . htmlspecialchars($row['email']) . "</td>";
                                 echo "<td>" . ($row['employee_id'] ?? 'N/A') . "</td>";

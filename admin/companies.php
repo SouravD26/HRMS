@@ -173,7 +173,7 @@ $result = $stmt->get_result();
                     <table class="table table-striped table-hover">
                         <thead class="table-dark">
                             <tr>
-                                <th>ID</th>
+                                <th>SL.NO</th>
                                 <th>Company Name</th>
                                 <th>Created At</th>
                                 <th>Actions</th>
@@ -182,9 +182,10 @@ $result = $stmt->get_result();
                         <tbody>
                             <?php
                             if ($result->num_rows > 0) {
+                                $sl_no = 0;
                                 while ($row = $result->fetch_assoc()) {
                                     echo "<tr>";
-                                    echo "<td>" . $row['id'] . "</td>";
+                                    echo "<td>" . (++$sl_no) . "</td>";
                                     echo "<td><strong>" . htmlspecialchars($row['name']) . "</strong></td>";
                                     echo "<td>" . date('d-m-Y H:i', strtotime($row['created_at'])) . "</td>";
                                     echo "<td>";

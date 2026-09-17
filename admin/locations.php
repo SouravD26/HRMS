@@ -181,7 +181,7 @@ $result = $stmt->get_result();
                     <table class="table table-striped table-hover">
                         <thead class="table-dark">
                             <tr>
-                                <th>ID</th>
+                                <th>SL.NO</th>
                                 <th>Location Name</th>
                                 <th>Office GPS Coordinates</th>
                                 <th>Radius</th>
@@ -192,10 +192,11 @@ $result = $stmt->get_result();
                         <tbody>
                             <?php
                             if ($result->num_rows > 0) {
+                                $sl_no = 0;
                                 while ($row = $result->fetch_assoc()) {
                                     $hasCoords = ($row['latitude'] !== null && $row['longitude'] !== null);
                                     echo "<tr>";
-                                    echo "<td>" . $row['id'] . "</td>";
+                                    echo "<td>" . (++$sl_no) . "</td>";
                                     echo "<td><strong>" . htmlspecialchars($row['name']) . "</strong></td>";
                                     if ($hasCoords) {
                                         echo "<td><span class='badge bg-success'>✓ Set</span> <small class='text-muted'>" . $row['latitude'] . ", " . $row['longitude'] . "</small></td>";
