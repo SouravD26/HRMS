@@ -3,7 +3,7 @@
 $servername = "localhost";
 $username = "root";
 $password = "";
-$dbname = "attendance";
+$dbname = "demo";
 
 // Create connection.
 //

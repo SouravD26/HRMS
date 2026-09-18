@@ -22,6 +22,19 @@ if ($chk && $chk->num_rows === 0) {
     $conn->query("ALTER TABLE users ADD COLUMN geo_restricted TINYINT(1) NOT NULL DEFAULT 0");
 }
 
+// Locations GPS columns are normally added by locations.php — ensure they exist here too
+$loc_cols = [
+    'latitude'      => "DECIMAL(10,8) DEFAULT NULL",
+    'longitude'     => "DECIMAL(11,8) DEFAULT NULL",
+    'radius_meters' => "INT NOT NULL DEFAULT 100",
+];
+foreach ($loc_cols as $col => $def) {
+    $chk = $conn->query("SHOW COLUMNS FROM locations LIKE '$col'");
+    if ($chk && $chk->num_rows === 0) {
+        $conn->query("ALTER TABLE locations ADD COLUMN $col $def");
+    }
+}
+
 // Filters
 $search      = isset($_GET['search']) ? trim($_GET['search']) : '';
 $dept_filter = isset($_GET['dept'])   ? trim($_GET['dept'])   : '';
