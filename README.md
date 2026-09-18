@@ -1,6 +1,6 @@
 # Attendance & HR Management System
 
-A comprehensive attendance and HR management system with face recognition, GPS geofencing, leave/comp-off/OD workflows, salary slip generation, and a REST API layer powering a companion Flutter mobile app. Built with PHP, MySQL, and Face-api.js.
+A comprehensive attendance and HR management system with face recognition, GPS geofencing, leave/comp-off/OD workflows, salary slip generation, and a companion Flutter mobile app. Built with PHP, MySQL, and Face-api.js.
 
 ---
 
@@ -19,31 +19,7 @@ This system provides:
 - **Supervisor Punching**: Supervisors punch in/out on behalf of employees allocated to their project (web + mobile)
 - **Attendance Policy & Project Holidays**: Configurable attendance rules and per-project holiday calendars
 - **Dashboard Views**: Multiple dashboards based on user role
-- **Mobile App (Flutter)**: Native Android/iOS app for employees, backed by a token-authenticated REST API reading/writing the same MySQL database as the web app
-
----
-
-## 🏗️ System Architecture
-
-The web app and the Flutter mobile app are two separate front ends over **one shared MySQL database**, hosted together on a single cPanel server:
-
-```
-┌─────────────────┐        ┌──────────────────────┐
-│   Web Browser    │──HTML─▶│  PHP Web Pages         │
-│ (Admin/Employee)│  forms │  (admin/*, employee/*) │
-└─────────────────┘        │        │               │
-                            │   PHP session/cookie   │
-                            │        auth            │
-┌─────────────────┐        │        ▼               │        ┌───────────────┐
-│  Flutter App     │──JSON─▶│  REST API (api/*,      │───────▶│  MySQL         │
-│ (Android/iOS)    │ +token │  auth/api_*.php)       │        │  Database      │
-└─────────────────┘        │  Bearer token auth      │        └───────────────┘
-                            └──────────────────────┘
-```
-
-- **Web app**: traditional PHP pages, PHP session/cookie authentication.
-- **Mobile app**: calls JSON endpoints under `api/` and `auth/api_*.php`, authenticated via a Bearer token (`Authorization: Bearer <token>`) issued at login and stored in the `auth_tokens` table (30-day expiry).
-- **Shared endpoints** (e.g. `api/get_employees.php`, `api/get_today_attendance.php`) accept **either** a valid session (web) **or** a Bearer token (mobile) via `api_authenticate_flexible()`, so the same PHP file serves both front ends without duplicating logic.
+- **Mobile App (Flutter)**: Native Android/iOS app for employees, sharing the same MySQL database as the web app
 
 ---
 
@@ -55,9 +31,9 @@ The web app and the Flutter mobile app are two separate front ends over **one sh
 | Database | MySQL / MariaDB |
 | Web Frontend | HTML, Bootstrap 5, vanilla JavaScript, SweetAlert2 |
 | Face Recognition | face-api.js (browser-based, client-side inference) |
-| Mobile App | Flutter (Android/iOS), calling the PHP REST API over HTTPS |
+| Mobile App | Flutter (Android/iOS) |
 | Hosting | cPanel shared hosting (Apache + MySQL) |
-| Auth | PHP sessions (web) + Bearer token (`auth_tokens` table) for the mobile API |
+| Auth | PHP sessions (web) + token login (mobile) |
 
 ---
 
@@ -81,10 +57,10 @@ The web app and the Flutter mobile app are two separate front ends over **one sh
 - ✅ GPS geofencing: punches outside the configured radius of the employee's assigned Location are blocked when enabled per employee
 - ✅ Multiple punch sessions per day, each stored as its own record; punch-out always closes the most recent open session
 - ✅ Location tracking with route/distance summary between punch in and punch out
-- ✅ Same punch in/out logic (selfie + GPS + geofencing) available to the Flutter app via `api/punch.php`
+- ✅ Same punch in/out logic (selfie + GPS + geofencing) available in the Flutter app
 
 ### **Leave, Comp-Off & On-Duty**
-- ✅ Employees submit leave applications (`employee/leave_application.php`, or via the mobile app's `api/leave.php`); admins review/approve (`admin/leave_management.php`)
+- ✅ Employees submit leave applications (`employee/leave_application.php`, or via the mobile app); admins review/approve (`admin/leave_management.php`)
 - ✅ Comp-off requests for working on days off (`admin/comp_off_management.php`)
 - ✅ On-Duty (OD) marking for off-site work (`admin/od_management.php`)
 - ✅ Approved leave (except Unpaid Leave), OD days, and comp-off adjusted days all count as paid days in salary calculations
@@ -93,7 +69,7 @@ The web app and the Flutter mobile app are two separate front ends over **one sh
 - ✅ Per-employee salary structure: CTC, Basic, Special Allowance, PF, ESI, and custom components (`admin/salary_slip.php`)
 - ✅ Paid Days computed per month from actual attendance, week-offs, approved leave, OD, and comp-off — deduplicated by calendar date
 - ✅ Loss-of-pay deduction prorated from **gross earnings** (Basic + Allowance + custom components) divided by days in month, not CTC (CTC includes PF/ESI, which are deducted separately)
-- ✅ Print and PDF export of generated slips (web); JSON breakdown available via `api/salary_slip.php` (mobile)
+- ✅ Print and PDF export of generated slips (web); also viewable in the mobile app
 
 ### **Attendance Display & Export**
 - ✅ WebPage View: Shows all punch records with locations visible
@@ -122,44 +98,6 @@ The web app and the Flutter mobile app are two separate front ends over **one sh
 - ✅ Supervisor Dashboard: Project employees and on-behalf punching
 - ✅ Face Operator Dashboard: Today's face attendance records
 - ✅ Employee Dashboard: Personal punch in/out, attendance history, and leave applications
-
----
-
-## 📱 Mobile App (Flutter) & REST API
-
-The Flutter app authenticates via a login endpoint that returns a **Bearer token**, then calls JSON endpoints using that token — all reading and writing the same database as the web app.
-
-### **Authentication**
-1. `POST auth/api_login.php` with `phone`, `password` → returns `{ success, token, user }`
-2. Send `Authorization: Bearer <token>` on every subsequent request
-3. `POST auth/api_logout.php` revokes the token
-
-### **API Reference**
-
-| Feature | Method | Endpoint | Key params |
-|---|---|---|---|
-| Login | POST | `auth/api_login.php` | `phone`, `password` |
-| Logout | POST | `auth/api_logout.php` | (token in header) |
-| My Profile | GET | `api/profile.php` | — (returns `photo_url` if a photo is on file) |
-| Punch In/Out | POST | `api/punch.php` | `action` (`in`/`out`), `selfie_image` (base64), `lat`, `lng` |
-| My Attendance History | GET | `api/my_attendance.php` | `month`, `year` |
-| Today's Attendance (all) | GET | `api/get_today_attendance.php` | — |
-| Attendance Summary | POST | `api/get_attendance_summary.php` | `user_id`, `date` |
-| Apply Leave | POST | `api/leave.php` | `leave_type`, `start_date`, `end_date`, `reason` |
-| My Leave List | GET | `api/leave.php` | — |
-| Salary Slip | GET | `api/salary_slip.php` | `month` (YYYY-MM) |
-| Employee List (admin) | GET | `api/get_employees.php` | — |
-| Toggle GPS Restriction (admin) | POST | `api/toggle_geo_restrict.php` | `user_id`, `value` |
-| Supervisor: Employee List | GET | `api/supervisor_employees.php` | — (employees on the supervisor's project + today's state) |
-| Supervisor: Employee Status | GET | `api/supervisor_employee_status.php` | `employee_id` |
-| Supervisor: Punch for Employee | POST | `api/supervisor_punch.php` | `employee_id`, `action` (`in`/`out`), `selfie_image`, `lat`, `lng` |
-| Upload/Delete Employee Photo (admin) | POST | `api/upload_employee_photo.php` / `api/delete_employee_photo.php` | `employee_id`, `photo` |
-
-### **Selfie Upload Contract**
-`api/punch.php` accepts the selfie as a **base64 data URL string** in a regular form field (`selfie_image`), not multipart file upload — matching the same encoding used by the web app's camera capture.
-
-### **Geofencing Contract**
-The Flutter app does not need to know office coordinates. It sends raw `lat`/`lng`; the server checks distance against the employee's assigned Location and returns `allowed`/`message` accordingly.
 
 ---
 
@@ -194,34 +132,14 @@ attendance/
 │   ├── export_monthly.php           # Export monthly reports
 │   └── face_recognition_dashboard.php # Face operator dashboard
 │
-├── api/                              # JSON REST API (shared by web AJAX + Flutter app)
-│   ├── punch.php                    # Punch in/out: selfie + GPS + geofencing
-│   ├── my_attendance.php            # My attendance history (month/year filter)
-│   ├── profile.php                  # My profile (incl. photo_url)
-│   ├── leave.php                    # Apply / list leave applications
-│   ├── salary_slip.php              # My salary slip breakdown (JSON)
-│   ├── record_attendance.php        # Punch in/out recording (face-recognition kiosk flow)
-│   ├── get_employees.php            # Employee list API
-│   ├── get_today_attendance.php     # Today's attendance (all employees)
-│   ├── get_attendance_summary.php   # Attendance summary API
-│   ├── upload_employee_photo.php    # Photo upload API
-│   ├── delete_employee_photo.php    # Photo delete API
-│   ├── toggle_geo_restrict.php      # Admin: toggle GPS restriction per employee
-│   ├── supervisor_employees.php     # Supervisor: project employees + today's state
-│   ├── supervisor_employee_status.php # Supervisor: one employee's punch state
-│   └── supervisor_punch.php         # Supervisor: punch on behalf of employee
-│
 ├── auth/
 │   ├── login.php                    # Login page (web)
 │   ├── login_process.php            # Process login (web, session-based)
-│   ├── api_login.php                # Login API (mobile, returns Bearer token)
-│   ├── api_logout.php               # Logout API (mobile, revokes token)
 │   ├── password_reset.php           # Self-service password reset
 │   └── logout.php                   # Logout handler (web)
 │
 ├── config/
 │   ├── db.php                       # Database connection
-│   ├── api_auth.php                 # Token + session auth helpers for api/*.php
 │   ├── attendance_geo.php           # Shared geofencing/selfie helpers
 │   ├── AttendanceProcessor.php      # Shared attendance processing logic
 │   └── db_migration.php             # Database schema migrations
@@ -293,12 +211,6 @@ id, name, latitude, longitude, radius_meters, created_at
 ```
 Each Location carries its own GPS coordinates and allowed radius; employees are assigned to a Location via `users.location`, and geofencing enforcement (web + mobile) checks against that specific Location's radius.
 
-### **Auth Tokens** (mobile app)
-```sql
-id, user_id, token, device_info, created_at, expires_at
-```
-Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobile API request, revoked by `auth/api_logout.php`.
-
 ### **Other Tables**
 - `od_records` — On-Duty dates per employee
 - `comp_off_requests` — Comp-off adjusted dates
@@ -313,9 +225,8 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 2. **Configure**: Edit `config/db.php` with your database credentials
 3. **Initialize**: Run `admin/initialize_database.php` to create required tables
 4. **Create Admin**: Run `create_superadmin.php`
-5. **Enable Mobile API**: Visit `config/create_auth_tokens_table.php` once to create the `auth_tokens` table, then delete that file
-6. **Access**: `http://localhost/attendence/`
-7. **Login**: Use the SuperAdmin credentials created above
+5. **Access**: `http://localhost/attendence/`
+6. **Login**: Use the SuperAdmin credentials created above
 
 ---
 
@@ -381,17 +292,13 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 - Paid Days = week-off days + present/late days + OD days + comp-off adjusted days + approved paid leave days, deduplicated by calendar date.
 - Loss-of-pay per day = (Basic + Allowance + custom components) ÷ days in month — **not** CTC, since CTC already includes PF/ESI which are deducted as separate line items.
 
-### **Mobile API Authentication**
-- The mobile API issues a random 64-character Bearer token on login (`auth_tokens` table, 30-day expiry).
-- Shared endpoints accept either a Bearer token or an existing PHP session (`api_authenticate_flexible()`), so the same file serves both the web app and the Flutter app without duplicated logic.
-
 ---
 
 ## 🔒 Security
 
 - ✅ Prepared statements (SQL injection prevention)
 - ✅ Bcrypt password hashing
-- ✅ Session-based authentication (web) + Bearer token authentication (mobile API)
+- ✅ Session-based authentication (web) + token authentication (mobile app)
 - ✅ Role-based access control
 - ✅ Server-side time validation (rejects client-submitted punch times)
 - ✅ Input sanitization
@@ -400,7 +307,7 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 
 ## 📝 Recent Updates (September 2026)
 
-- ✅ Added Supervisor role: web dashboard + mobile API for punching on behalf of project employees
+- ✅ Added Supervisor role: web dashboard + mobile app support for punching on behalf of project employees
 - ✅ Added Attendance Policy and Project Holidays modules
 - ✅ Redesigned login page, navbar, and SuperAdmin/Admin dashboards (shared view, new `linear-admin.css` theme)
 - ✅ GPS restriction page now auto-creates missing Location GPS columns
@@ -408,8 +315,7 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 
 ## 📝 Earlier Updates (August 2026)
 
-- ✅ Added a full REST API layer (`api/`, `auth/api_*.php`) for the Flutter mobile app: login/logout, punch in/out, attendance history, leave, salary slip, profile — all Bearer-token authenticated and reading/writing the same database as the web app
-- ✅ Fixed a token/session auth detection bug that caused "Missing token" errors on browser-based admin actions
+- ✅ Added Flutter mobile app support: login, punch in/out, attendance history, leave, salary slip, profile
 - ✅ Replaced the single global "Head Office" GPS setting with **per-Location** GPS coordinates and radius, supporting multiple branches/offices
 - ✅ Added Leave Application & Leave Management modules
 - ✅ Added Salary Slip generation with CTC/Basic/Allowance/PF/ESI breakdown
@@ -433,4 +339,4 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 
 ---
 
-**Last Updated**: September 2026 | **Status**: ✅ Fully Operational (Web + Mobile API)
+**Last Updated**: September 2026 | **Status**: ✅ Fully Operational (Web + Mobile)
