@@ -15,7 +15,9 @@ This system provides:
 - **Leave, Comp-Off & On-Duty (OD)**: Employee leave applications with admin approval, comp-off requests, and OD marking — all feed into payroll as paid days
 - **Salary Slips**: Auto-generated payslips with CTC/Basic/Allowance breakdown, PF/ESI deductions, and loss-of-pay proration based on attendance
 - **Monthly Reports**: Paginated, exportable attendance data with first/last punch times
-- **Role-Based Access**: SuperAdmin, Admin, Face Operator, and Employee roles
+- **Role-Based Access**: SuperAdmin, Admin, Supervisor, Face Operator, and Employee roles
+- **Supervisor Punching**: Supervisors punch in/out on behalf of employees allocated to their project (web + mobile)
+- **Attendance Policy & Project Holidays**: Configurable attendance rules and per-project holiday calendars
 - **Dashboard Views**: Multiple dashboards based on user role
 - **Mobile App (Flutter)**: Native Android/iOS app for employees, backed by a token-authenticated REST API reading/writing the same MySQL database as the web app
 
@@ -104,9 +106,20 @@ The web app and the Flutter mobile app are two separate front ends over **one sh
 - ✅ Per-employee ON/OFF toggle for restriction (`admin/geo_restriction.php`) checks against that employee's assigned Location
 - ✅ Employees with no Location assigned, or a Location without GPS set, are allowed to punch from anywhere
 
+### **Supervisor Module**
+- ✅ Admin manages supervisor accounts (`admin/supervisors.php`)
+- ✅ Supervisor dashboard (`supervisor/dashboard.php`) lists working employees allocated to their project with today's punch state
+- ✅ Punch in/out on an employee's behalf with selfie + GPS; web and mobile share `config/supervisor_punch.php`, so both write identical rows
+
+### **Attendance Policy & Holidays**
+- ✅ Configurable attendance rules (`admin/attendance_policy.php`)
+- ✅ Project-wise holiday calendars (`admin/project_holidays.php`)
+
 ### **Dashboards**
+- ✅ Redesigned SuperAdmin and Admin dashboards sharing one view (`admin/_dashboard_view.php`) with KPI cards; sections are hidden when an admin lacks the matching right
 - ✅ SuperAdmin Dashboard: Full system overview with rights management
 - ✅ Admin Dashboard: Employee, attendance, leave, and payroll management
+- ✅ Supervisor Dashboard: Project employees and on-behalf punching
 - ✅ Face Operator Dashboard: Today's face attendance records
 - ✅ Employee Dashboard: Personal punch in/out, attendance history, and leave applications
 
@@ -137,6 +150,9 @@ The Flutter app authenticates via a login endpoint that returns a **Bearer token
 | Salary Slip | GET | `api/salary_slip.php` | `month` (YYYY-MM) |
 | Employee List (admin) | GET | `api/get_employees.php` | — |
 | Toggle GPS Restriction (admin) | POST | `api/toggle_geo_restrict.php` | `user_id`, `value` |
+| Supervisor: Employee List | GET | `api/supervisor_employees.php` | — (employees on the supervisor's project + today's state) |
+| Supervisor: Employee Status | GET | `api/supervisor_employee_status.php` | `employee_id` |
+| Supervisor: Punch for Employee | POST | `api/supervisor_punch.php` | `employee_id`, `action` (`in`/`out`), `selfie_image`, `lat`, `lng` |
 | Upload/Delete Employee Photo (admin) | POST | `api/upload_employee_photo.php` / `api/delete_employee_photo.php` | `employee_id`, `photo` |
 
 ### **Selfie Upload Contract**
@@ -163,6 +179,11 @@ attendance/
 │   ├── shifts.php                   # Manage shifts
 │   ├── locations.php                # Manage locations (GPS coords + radius per location)
 │   ├── geo_restriction.php          # Per-employee GPS geofencing on/off
+│   ├── supervisors.php              # Manage supervisor accounts
+│   ├── attendance_policy.php        # Attendance rules
+│   ├── project_holidays.php         # Project-wise holidays
+│   ├── _dashboard_view.php          # Shared dashboard view (SuperAdmin + Admin)
+│   ├── _navbar.php                  # Admin navigation + rights ($_can)
 │   ├── leave_management.php         # Review/approve employee leave applications
 │   ├── comp_off_management.php      # Comp-off requests
 │   ├── od_management.php            # On-Duty (OD) marking
@@ -185,7 +206,10 @@ attendance/
 │   ├── get_attendance_summary.php   # Attendance summary API
 │   ├── upload_employee_photo.php    # Photo upload API
 │   ├── delete_employee_photo.php    # Photo delete API
-│   └── toggle_geo_restrict.php      # Admin: toggle GPS restriction per employee
+│   ├── toggle_geo_restrict.php      # Admin: toggle GPS restriction per employee
+│   ├── supervisor_employees.php     # Supervisor: project employees + today's state
+│   ├── supervisor_employee_status.php # Supervisor: one employee's punch state
+│   └── supervisor_punch.php         # Supervisor: punch on behalf of employee
 │
 ├── auth/
 │   ├── login.php                    # Login page (web)
@@ -202,6 +226,11 @@ attendance/
 │   ├── AttendanceProcessor.php      # Shared attendance processing logic
 │   └── db_migration.php             # Database schema migrations
 │
+├── supervisor/
+│   ├── dashboard.php                # Supervisor dashboard
+│   ├── employee_status.php          # Employee punch state (web)
+│   └── punch.php                    # Punch on behalf of employee (web)
+│
 ├── employee/
 │   ├── dashboard.php                # Employee dashboard
 │   ├── punch_in.php                 # Punch in with selfie + GPS
@@ -215,7 +244,7 @@ attendance/
 │   └── selfies/YYYY/MM/DD/          # Punch in/out selfies (date-partitioned)
 │
 ├── assets/
-│   ├── css/                         # Stylesheets
+│   ├── css/                         # Stylesheets (incl. linear-admin.css admin theme)
 │   └── js/                          # JavaScript functionality
 │
 ├── auto_face_attendance.php         # Main face detection page
@@ -231,7 +260,7 @@ attendance/
 
 ### **Users**
 ```sql
-id, name, email, password, role (employee/admin/suparadmin/face_operator),
+id, name, email, password, role (employee/admin/suparadmin/supervisor/face_operator),
 department, employee_id, company, phone, shift_time, location,
 date_of_joining, date_of_exit, status (Working/Resign),
 sex (Male/Female/Other), week_off, geo_restricted, password_set, created_at
@@ -280,12 +309,13 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 
 ## 🚀 Installation & Setup
 
-1. **Configure**: Edit `config/db.php` with your database credentials
-2. **Initialize**: Run `admin/initialize_database.php` to create required tables
-3. **Create Admin**: Run `create_superadmin.php`
-4. **Enable Mobile API**: Visit `config/create_auth_tokens_table.php` once to create the `auth_tokens` table, then delete that file
-5. **Access**: `http://localhost/attendence/`
-6. **Login**: Use the SuperAdmin credentials created above
+1. **Install dependencies**: Run `composer install` (the `vendor/` folder is not committed; PhpSpreadsheet is required for Excel import/export)
+2. **Configure**: Edit `config/db.php` with your database credentials
+3. **Initialize**: Run `admin/initialize_database.php` to create required tables
+4. **Create Admin**: Run `create_superadmin.php`
+5. **Enable Mobile API**: Visit `config/create_auth_tokens_table.php` once to create the `auth_tokens` table, then delete that file
+6. **Access**: `http://localhost/attendence/`
+7. **Login**: Use the SuperAdmin credentials created above
 
 ---
 
@@ -293,6 +323,7 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 
 - **SuperAdmin**: Full system control, including salary slips and rights management
 - **Admin**: Employee, attendance, leave, comp-off, and OD management
+- **Supervisor**: Punch in/out on behalf of employees on their project (web or Flutter)
 - **Face Operator**: Today's face attendance only
 - **Employee**: Personal punch in/out, attendance history, and leave applications (web or Flutter app)
 
@@ -367,7 +398,15 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 
 ---
 
-## 📝 Recent Updates (August 2026)
+## 📝 Recent Updates (September 2026)
+
+- ✅ Added Supervisor role: web dashboard + mobile API for punching on behalf of project employees
+- ✅ Added Attendance Policy and Project Holidays modules
+- ✅ Redesigned login page, navbar, and SuperAdmin/Admin dashboards (shared view, new `linear-admin.css` theme)
+- ✅ GPS restriction page now auto-creates missing Location GPS columns
+- ✅ Removed committed `vendor/` and uploaded selfies from the repository — run `composer install` after cloning
+
+## 📝 Earlier Updates (August 2026)
 
 - ✅ Added a full REST API layer (`api/`, `auth/api_*.php`) for the Flutter mobile app: login/logout, punch in/out, attendance history, leave, salary slip, profile — all Bearer-token authenticated and reading/writing the same database as the web app
 - ✅ Fixed a token/session auth detection bug that caused "Missing token" errors on browser-based admin actions
@@ -388,9 +427,10 @@ Issued by `auth/api_login.php`, validated by `config/api_auth.php` on every mobi
 - MySQL 5.7+
 - Apache/cPanel hosting (web) 
 - Modern browser (Chrome, Firefox, Edge, Safari) for the web app
+- Composer (for PHP dependencies)
 - Flutter SDK (Android Studio) for building the mobile app
 - Camera and location access for face attendance, mobile punch in/out, and geofencing
 
 ---
 
-**Last Updated**: August 2026 | **Status**: ✅ Fully Operational (Web + Mobile API)
+**Last Updated**: September 2026 | **Status**: ✅ Fully Operational (Web + Mobile API)
